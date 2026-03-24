@@ -1,6 +1,10 @@
 substitutions:
   devicename: ESP32PPC
   friendly_name: $devicename
+#  wifi_ip: aaa.bbb.ccc.d
+#  wifi_sub: aaa.bbb.ccc.d
+#  wifi_gw: aaa.bbb.ccc.d
+#  wifi_dns1: aaa.bbb.ccc.d
 
 external_components:
   refresh: always
@@ -15,16 +19,21 @@ esphome:
 esp32:
   board: wemos_d1_mini32
   framework:
-    type: arduino
+    type: arduino       # Important, not ported to esp-idf yet
 
 wifi:
   networks:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
   use_address: $devicename
-  fast_connect: True
-  power_save_mode: light
+#  fast_connect: True
+#  power_save_mode: light
   domain: .local
+#  manual_ip:
+#    static_ip: ${wifi_ip}
+#    gateway: ${wifi_gw}
+#    subnet: ${wifi_sub}
+#    dns1: ${wifi_dns1}
 
 captive_portal:
 
@@ -53,12 +62,11 @@ web_server:
 logger:
   level: INFO
 
-i2c:
-  sda: 17
-  scl: 16
-
 # VL53L1X sensor configuration is separate from ESP32PPC people counting algorithm
 vl53l1x:
+  sda: 17     # Use desired PINs for the chosen ESP32
+  scl: 16     # Use desired PINs for the chosen ESP32
+
   calibration:
     # The ranging mode is different based on how long the distance is that the sensor need to measure.
     # The longer the distance, the more time the sensor needs to take a measurement.
