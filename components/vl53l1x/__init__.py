@@ -1,25 +1,23 @@
 import logging
 from typing import Dict, Any
-from esphome.components import i2c
-from esphome.core import CORE
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
+import esphome.pins as pins
 from esphome.const import (
+    CONF_ADDRESS,
     CONF_FREQUENCY,
     CONF_ID,
-    CONF_I2C,
-    CONF_I2C_ID,
     CONF_INTERRUPT,
     CONF_OFFSET,
     CONF_PINS,
+    CONF_SCL,
+    CONF_SDA,
     CONF_TIMEOUT,
 )
-import esphome.pins as pins
 
 _LOGGER = logging.getLogger(__name__)
 
-DEPENDENCIES = ["i2c"]
-AUTO_LOAD = ["i2c"]
 MULTI_CONF = False  # TODO enable when we support multiple addresses
 
 vl53l1x_ns = cg.esphome_ns.namespace("vl53l1x")
@@ -73,38 +71,38 @@ def NullableSchema(*args, default: Any = None, **kwargs):
     return cv.Any(cv.Schema(*args, **kwargs), none_to_empty)
 
 
-CONFIG_SCHEMA = (
-    cv.Schema(
-        {
-            cv.GenerateID(): cv.declare_id(VL53L1X),
-            cv.Optional(
-                CONF_TIMEOUT, default="2s"
-            ): cv.positive_time_period_milliseconds,
-            cv.Optional(CONF_PINS, default={}): NullableSchema(
-                {
-                    cv.Optional(CONF_XSHUT): pins.gpio_output_pin_schema,
-                    cv.Optional(CONF_INTERRUPT): pins.internal_gpio_input_pin_schema,
-                }
-            ),
-            cv.Optional(CONF_CALIBRATION, default={}): NullableSchema(
-                {
-                    cv.Optional(CONF_RANGING_MODE, default=CONF_AUTO): cv.enum(
-                        RANGING_MODES
+CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.declare_id(VL53L1X),
+        cv.Optional(CONF_ADDRESS, default=0x29): cv.i2c_address,
+        cv.Optional(CONF_SDA, default=21): cv.int_range(min=0, max=39),
+        cv.Optional(CONF_SCL, default=22): cv.int_range(min=0, max=39),
+        cv.Optional(CONF_FREQUENCY, default="100kHz"): cv.frequency,
+        cv.Optional(
+            CONF_TIMEOUT, default="2s"
+        ): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_PINS, default={}): NullableSchema(
+            {
+                cv.Optional(CONF_XSHUT): pins.gpio_output_pin_schema,
+                cv.Optional(CONF_INTERRUPT): pins.internal_gpio_input_pin_schema,
+            }
+        ),
+        cv.Optional(CONF_CALIBRATION, default={}): NullableSchema(
+            {
+                cv.Optional(CONF_RANGING_MODE, default=CONF_AUTO): cv.enum(
+                    RANGING_MODES
+                ),
+                cv.Optional(CONF_XTALK): cv.All(
+                    int_with_unit(
+                        "corrected photon count as cps (counts per second)", "(cps)"
                     ),
-                    cv.Optional(CONF_XTALK): cv.All(
-                        int_with_unit(
-                            "corrected photon count as cps (counts per second)", "(cps)"
-                        ),
-                        cv.uint16_t,
-                    ),
-                    cv.Optional(CONF_OFFSET): cv.All(distance_as_mm, int16_t),
-                }
-            ),
-        }
-    )
-    .extend(i2c.i2c_device_schema(0x29))
-    .extend(cv.COMPONENT_SCHEMA)
-)
+                    cv.uint16_t,
+                ),
+                cv.Optional(CONF_OFFSET): cv.All(distance_as_mm, int16_t),
+            }
+        ),
+    }
+).extend(cv.COMPONENT_SCHEMA)
 
 
 async def to_code(config: Dict):
@@ -113,18 +111,16 @@ async def to_code(config: Dict):
 
     vl53l1x = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(vl53l1x, config)
-    await i2c.register_i2c_device(vl53l1x, config)
 
-    # If i2c frequency has not been explicitly set, then increase it to our recommended
-    i2c_id = config[CONF_I2C_ID]
-    i2c_config = next(
-        entry for entry in CORE.config[CONF_I2C] if entry[CONF_ID] == i2c_id
-    )
-    frequency = i2c_config[CONF_FREQUENCY]
-    if frequency == 50000:  # default
-        i2c_var = await cg.get_variable(i2c_id)
-        cg.add(i2c_var.set_frequency(400000))
-    elif frequency < 400000:
+    # This component uses the underlying ULD library, which talks directly via global Wire.
+    # Configure Wire from component config instead of ESPHome's i2c component registration.
+    cg.add(vl53l1x.set_address(config[CONF_ADDRESS]))
+    cg.add(vl53l1x.set_i2c_sda_pin(config[CONF_SDA]))
+    cg.add(vl53l1x.set_i2c_scl_pin(config[CONF_SCL]))
+    cg.add(vl53l1x.set_i2c_frequency(int(config[CONF_FREQUENCY])))
+
+    frequency = int(config[CONF_FREQUENCY])
+    if frequency < 400000:
         _LOGGER.warning(
             "Recommended I2C frequency for VL53L1X is 400kHz. Currently: %dkHz",
             frequency / 1000,

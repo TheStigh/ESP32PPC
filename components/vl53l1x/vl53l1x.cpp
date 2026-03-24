@@ -5,7 +5,9 @@ namespace vl53l1x {
 
 void VL53L1X::dump_config() {
   ESP_LOGCONFIG(TAG, "VL53L1X:");
-  LOG_I2C_DEVICE(this);
+  ESP_LOGCONFIG(TAG, "  I2C address: 0x%02X", this->address_);
+  ESP_LOGCONFIG(TAG, "  I2C pins: SDA=%u, SCL=%u", this->sda_pin_, this->scl_pin_);
+  ESP_LOGCONFIG(TAG, "  I2C frequency: %u Hz", this->i2c_frequency_);
   if (this->ranging_mode != nullptr) {
     ESP_LOGCONFIG(TAG, "  Ranging: %s", this->ranging_mode->name);
   }
@@ -21,6 +23,14 @@ void VL53L1X::dump_config() {
 
 void VL53L1X::setup() {
   ESP_LOGD(TAG, "Beginning setup");
+
+  // The upstream ULD library uses the global Wire instance.
+  if (!Wire.begin(this->sda_pin_, this->scl_pin_, this->i2c_frequency_)) {
+    ESP_LOGE(TAG, "Failed to initialize Wire on SDA=%u SCL=%u at %u Hz",
+             this->sda_pin_, this->scl_pin_, this->i2c_frequency_);
+    this->mark_failed();
+    return;
+  }
 
   // TODO use xshut_pin, if given, to change address
   auto status = this->init();
@@ -59,9 +69,9 @@ VL53L1_Error VL53L1X::init() {
   VL53L1_Error status;
 
   // If address is non-default, set and try again.
-  if (address_ != (sensor.GetI2CAddress() >> 1)) {
+  if (this->address_ != (sensor.GetI2CAddress() >> 1)) {
     ESP_LOGD(TAG, "Setting different address");
-    status = sensor.SetI2CAddress(address_ << 1);
+    status = sensor.SetI2CAddress(this->address_ << 1);
     if (status != VL53L1_ERROR_NONE) {
       ESP_LOGE(TAG, "Failed to change address. Error: %d", status);
       return status;
