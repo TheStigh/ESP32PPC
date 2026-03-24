@@ -17,7 +17,7 @@ MULTI_CONF = True
 CONF_ESP32PPC_ID = "esp32ppc_id"
 
 esp32ppc_ns = cg.esphome_ns.namespace("esp32ppc")
-Esp32ppce = esp32ppc_ns.class_("Esp32ppc", cg.PollingComponent)
+Esp32ppc = esp32ppc_ns.class_("Esp32ppc", cg.PollingComponent)
 
 CONF_AUTO = "auto"
 CONF_ORIENTATION = "orientation"
