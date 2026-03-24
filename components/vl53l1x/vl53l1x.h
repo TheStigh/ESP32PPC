@@ -44,7 +44,7 @@ class VL53L1X : public Component {
   uint8_t address_{0x29};
   uint8_t sda_pin_{21};
   uint8_t scl_pin_{22};
-  uint32_t i2c_frequency_{100000};
+  uint32_t i2c_frequency_{400000};
   VL53L1X_ULD sensor;
   optional<GPIOPin *> xshut_pin{};
   optional<InternalGPIOPin *> interrupt_pin{};
@@ -63,3 +63,4 @@ class VL53L1X : public Component {
 
 }  // namespace vl53l1x
 }  // namespace esphome
+

@@ -77,7 +77,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_ADDRESS, default=0x29): cv.i2c_address,
         cv.Optional(CONF_SDA, default=21): cv.int_range(min=0, max=39),
         cv.Optional(CONF_SCL, default=22): cv.int_range(min=0, max=39),
-        cv.Optional(CONF_FREQUENCY, default="100kHz"): cv.frequency,
+        cv.Optional(CONF_FREQUENCY, default="400kHz"): cv.frequency,
         cv.Optional(
             CONF_TIMEOUT, default="2s"
         ): cv.positive_time_period_milliseconds,
@@ -148,3 +148,4 @@ async def setup_calibration(vl53l1x: cg.Pvariable, config: Dict):
         cg.add(vl53l1x.set_xtalk(config[CONF_XTALK]))
     if CONF_OFFSET in config:
         cg.add(vl53l1x.set_offset(config[CONF_OFFSET]))
+
